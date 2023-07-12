@@ -5,3 +5,5 @@ edition = "2021"
 license = "Unlicense"
 description = "Algorithms and data structures designed to maximize performance on superscalar processors."
 authors = ["Daniel Levin <daniellevin2607@gmail.com"]
+repository = "https://github.com/daniel-levin/branchless"
+keywords = ["simd", "hpc"]
