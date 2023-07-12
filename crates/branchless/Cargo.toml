@@ -1,0 +1,7 @@
+[package]
+name = "branchless"
+version = "0.1.0"
+edition = "2021"
+license = "Unlicense"
+description = "Algorithms and data structures designed to maximize performance on superscalar processors."
+authors = ["Daniel Levin <daniellevin2607@gmail.com"]
