@@ -1,5 +1,5 @@
 [package]
-name = "branchless"
+name = "branchless_core"
 version = "0.1.0"
 edition = "2021"
 license = "Unlicense"
@@ -7,6 +7,3 @@ description = "Algorithms and data structures designed to maximize performance o
 authors = ["Daniel Levin <daniellevin2607@gmail.com"]
 repository = "https://github.com/daniel-levin/branchless"
 keywords = ["simd", "hpc"]
-
-[dependencies]
-branchless_core = { path = "../branchless_core" }

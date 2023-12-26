@@ -1,2 +1,2 @@
 [workspace]
-members = ["crates/branchless"]
+members = ["crates/branchless", "crates/branchless_core", "crates/branchless_derive"]
