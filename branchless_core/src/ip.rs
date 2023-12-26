@@ -2,4 +2,4 @@
 
 #[cfg(target_arch = "x86_64")]
 #[cfg(target_feature = "sse2")]
-pub use crate::raw::sse2::*;
+pub use crate::raw::sse2::parse_ipv4;
