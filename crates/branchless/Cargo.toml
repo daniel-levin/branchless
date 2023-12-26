@@ -7,3 +7,10 @@ description = "Algorithms and data structures designed to maximize performance o
 authors = ["Daniel Levin <daniellevin2607@gmail.com"]
 repository = "https://github.com/daniel-levin/branchless"
 keywords = ["simd", "hpc"]
+
+[dev-dependencies]
+criterion = "0.5"
+
+[[bench]]
+name="ip"
+harness=false
