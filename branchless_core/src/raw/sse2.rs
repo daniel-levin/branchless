@@ -152,6 +152,9 @@ static PATTERNS: [[u8; 16]; 81] = [
     [2, 1, 6, 5, 10, 9, 14, 13, 0, 0, 4, 4, 8, 8, 12, 12],
 ];
 
+/// Parse ipv4 address using Mula's technique, refined by Lemire.
+/// http://0x80.pl/notesen/2023-04-09-faster-parse-ipv4.html
+/// https://lemire.me/blog/2023/06/08/parsing-ip-addresses-crazily-fast/
 pub fn parse_ipv4(s: &str) -> Result<u32, ()> {
     unsafe {
         let mut v: m128 = _mm_loadu_si128(s.as_ptr() as *const m128);
