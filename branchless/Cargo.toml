@@ -9,4 +9,4 @@ repository = "https://github.com/daniel-levin/branchless"
 keywords = ["simd", "hpc"]
 
 [dependencies]
-branchless_core = { path = "../branchless_core" }
+branchless_core = { path = "../branchless_core", version = "0.1" }
