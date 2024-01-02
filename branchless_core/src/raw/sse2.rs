@@ -2,9 +2,10 @@
 #![cfg(target_feature = "sse2")]
 
 use core::arch::x86_64::{
-    __m128i as m128, _mm_adds_epu16, _mm_adds_epu8, _mm_cmpeq_epi8, _mm_cvtsi128_si32,
-    _mm_loadu_si128, _mm_maddubs_epi16, _mm_movemask_epi8, _mm_packus_epi16, _mm_set1_epi8,
-    _mm_set_epi8, _mm_shuffle_epi32, _mm_shuffle_epi8, _mm_subs_epi8, _mm_xor_si128,
+    __m128i as m128, _mm_adds_epu16, _mm_adds_epu8, _mm_and_si128, _mm_bsrli_si128, _mm_cmpeq_epi8,
+    _mm_cvtsi128_si32, _mm_loadu_si128, _mm_maddubs_epi16, _mm_movemask_epi8, _mm_packus_epi16,
+    _mm_set1_epi8, _mm_set_epi8, _mm_shuffle_epi32, _mm_shuffle_epi8, _mm_subs_epi8,
+    _mm_test_all_ones, _mm_xor_si128,
 };
 
 #[allow(non_snake_case)]
@@ -157,7 +158,7 @@ static PATTERNS: [[u8; 16]; 81] = [
 /// https://lemire.me/blog/2023/06/08/parsing-ip-addresses-crazily-fast/
 pub fn parse_ipv4(s: &str) -> Result<u32, ()> {
     unsafe {
-        let mut v: m128 = _mm_loadu_si128(s.as_ptr() as *const m128);
+        let mut v: m128 = safe_masked_load(s);
 
         let all_dots: m128 = _mm_set1_epi8(0x2E);
         let dot_locations: m128 = _mm_cmpeq_epi8(v, all_dots);
@@ -195,9 +196,62 @@ pub fn parse_ipv4(s: &str) -> Result<u32, ()> {
     }
 }
 
+fn safe_masked_load(s: &str) -> m128 {
+    let mut v: m128 = unsafe { _mm_loadu_si128(s.as_ptr() as *const m128) };
+
+    if s.len() >= 16 {
+        v
+    } else {
+        let excess = 16 - s.len();
+        let mask = unsafe { _mm_set1_epi8(-1 as i8) };
+        let shifted = unsafe {
+            match excess {
+                1 => _mm_bsrli_si128::<1>(mask),
+                2 => _mm_bsrli_si128::<2>(mask),
+                3 => _mm_bsrli_si128::<3>(mask),
+                4 => _mm_bsrli_si128::<4>(mask),
+                5 => _mm_bsrli_si128::<5>(mask),
+                6 => _mm_bsrli_si128::<6>(mask),
+                7 => _mm_bsrli_si128::<7>(mask),
+                8 => _mm_bsrli_si128::<8>(mask),
+                9 => _mm_bsrli_si128::<9>(mask),
+                10 => _mm_bsrli_si128::<10>(mask),
+                11 => _mm_bsrli_si128::<11>(mask),
+                12 => _mm_bsrli_si128::<12>(mask),
+                13 => _mm_bsrli_si128::<13>(mask),
+                14 => _mm_bsrli_si128::<14>(mask),
+                15 => _mm_bsrli_si128::<15>(mask),
+                x => unreachable!(),
+            }
+        };
+
+        let masked = unsafe { _mm_and_si128(shifted, v) };
+
+        masked
+    }
+}
+
+fn are_equal(a: m128, b: m128) -> bool {
+    unsafe {
+        let compared = _mm_cmpeq_epi8(a, b);
+        _mm_test_all_ones(compared) == 1
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    pub fn test_masked_load_masks() {
+        let a = "hello world";
+        let b = "hello attacker";
+
+        let a_masked = safe_masked_load(&a[0..=4]);
+        let b_masked = safe_masked_load(&b[0..=4]);
+
+        assert!(are_equal(a_masked, b_masked));
+    }
 
     #[test]
     fn parse_ips() {
