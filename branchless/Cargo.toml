@@ -1,6 +1,6 @@
 [package]
 name = "branchless"
-version = "0.1.0"
+version = "0.1.1"
 edition = "2021"
 license = "Unlicense"
 description = "Algorithms and data structures designed to maximize performance on superscalar processors."
