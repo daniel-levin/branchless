@@ -25,13 +25,17 @@ fn bench_parse_inet4_default_single(bencher: &mut Bencher) {
 #[bench]
 fn bench_parse_inet4_sse2(bencher: &mut Bencher) {
     bencher.iter(|| {
-        TEST_DATA.iter().for_each(|x| {branchless::ip::parse_ipv4(x);});
+        TEST_DATA.iter().for_each(|x| {
+            branchless::ip::parse_ipv4(x);
+        });
     });
 }
 
 #[bench]
 fn bench_parse_inet4_default(bencher: &mut Bencher) {
     bencher.iter(|| {
-        TEST_DATA.iter().for_each(|x| {std::net::Ipv4Addr::from_str(x);});
+        TEST_DATA.iter().for_each(|x| {
+            std::net::Ipv4Addr::from_str(x);
+        });
     });
 }
