@@ -160,7 +160,8 @@ const PATTERNS: [[u8; 16]; 81] = [
 /// http://0x80.pl/notesen/2023-04-09-faster-parse-ipv4.html
 /// https://lemire.me/blog/2023/06/08/parsing-ip-addresses-crazily-fast/
 pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
-    let mut v: m128 = masked_load_or_die(s)?;
+    //let mut v: m128 = masked_load_or_die(s)?;
+    let mut v: m128 = unsafe { _mm_loadu_si128(s.as_ptr() as *const m128) };
     unsafe {
         let all_dots: m128 = _mm_set1_epi8(0x2E);
         let dot_locations: m128 = _mm_cmpeq_epi8(v, all_dots);
