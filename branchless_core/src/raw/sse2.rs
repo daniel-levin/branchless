@@ -8,6 +8,8 @@ use core::arch::x86_64::{
     _mm_test_all_ones, _mm_xor_si128,
 };
 
+use crate::ip::Ipv4ParseError;
+
 #[allow(non_snake_case)]
 pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
     ((z << 6) | (y << 4) | (x << 2) | w) as i32
@@ -156,8 +158,8 @@ static PATTERNS: [[u8; 16]; 81] = [
 /// Parse ipv4 address using Mula's technique, refined by Lemire.
 /// http://0x80.pl/notesen/2023-04-09-faster-parse-ipv4.html
 /// https://lemire.me/blog/2023/06/08/parsing-ip-addresses-crazily-fast/
-pub fn parse_ipv4(s: &str) -> Result<u32, ()> {
-    let mut v: m128 = safe_masked_load(s);
+pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
+    let mut v: m128 = masked_load_or_die(s)?;
     unsafe {
         let all_dots: m128 = _mm_set1_epi8(0x2E);
         let dot_locations: m128 = _mm_cmpeq_epi8(v, all_dots);
@@ -177,7 +179,7 @@ pub fn parse_ipv4(s: &str) -> Result<u32, ()> {
 
         let hash_id = PATTERNS_ID[hash_key as usize];
         if hash_id >= 81 {
-            return Err(());
+            return Err(Ipv4ParseError::Invalid);
         }
 
         let pattern_ptr = PATTERNS[hash_id as usize].as_ptr() as *const m128;
@@ -195,11 +197,13 @@ pub fn parse_ipv4(s: &str) -> Result<u32, ()> {
     }
 }
 
-fn safe_masked_load(s: &str) -> m128 {
+fn masked_load_or_die(s: &str) -> Result<m128, Ipv4ParseError> {
     let mut v: m128 = unsafe { _mm_loadu_si128(s.as_ptr() as *const m128) };
 
+    // TODO: there is a clear branch to eliminate.
+
     if s.len() >= 16 {
-        v
+        Err(Ipv4ParseError::TooLong)
     } else {
         let excess = 16 - s.len();
         let mask = unsafe { _mm_set1_epi8(-1 as i8) };
@@ -226,7 +230,7 @@ fn safe_masked_load(s: &str) -> m128 {
 
         let masked = unsafe { _mm_and_si128(shifted, v) };
 
-        masked
+        Ok(masked)
     }
 }
 
@@ -246,8 +250,8 @@ mod tests {
         let a = "hello world";
         let b = "hello attacker";
 
-        let a_masked = safe_masked_load(&a[0..=4]);
-        let b_masked = safe_masked_load(&b[0..=4]);
+        let a_masked = masked_load_or_die(&a[0..=4]).unwrap();
+        let b_masked = masked_load_or_die(&b[0..=4]).unwrap();
 
         assert!(are_equal(a_masked, b_masked));
     }
