@@ -200,7 +200,7 @@ pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
 
 fn masked_load_or_die(s: &str) -> Result<m128, Ipv4ParseError> {
     let v: m128 = unsafe { _mm_loadu_si128(s.as_ptr() as *const m128) };
-    let mask = unsafe { _mm_set1_epi8(-1 as i8) };
+    let mask = unsafe { _mm_set1_epi8(-1i8) };
 
     macro_rules! devolve {
         ($n:literal) => {
