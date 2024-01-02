@@ -18,6 +18,7 @@ pub const fn _MM_SHUFFLE(z: u32, y: u32, x: u32, w: u32) -> i32 {
 #[cfg(test)]
 extern crate std;
 
+#[allow(unused_macros)]
 #[cfg(not(test))]
 macro_rules! dbg {
     () => {};
@@ -230,6 +231,7 @@ fn masked_load_or_die(s: &str) -> Result<m128, Ipv4ParseError> {
     }
 }
 
+#[allow(dead_code)]
 fn are_equal(a: m128, b: m128) -> bool {
     unsafe {
         let compared = _mm_cmpeq_epi8(a, b);
