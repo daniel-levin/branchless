@@ -198,39 +198,35 @@ pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
 }
 
 fn masked_load_or_die(s: &str) -> Result<m128, Ipv4ParseError> {
-    let mut v: m128 = unsafe { _mm_loadu_si128(s.as_ptr() as *const m128) };
+    let v: m128 = unsafe { _mm_loadu_si128(s.as_ptr() as *const m128) };
+    let mask = unsafe { _mm_set1_epi8(-1 as i8) };
 
-    // TODO: there is a clear branch to eliminate.
-
-    if s.len() >= 16 {
-        Err(Ipv4ParseError::TooLong)
-    } else {
-        let excess = 16 - s.len();
-        let mask = unsafe { _mm_set1_epi8(-1 as i8) };
-        let shifted = unsafe {
-            match excess {
-                1 => _mm_bsrli_si128::<1>(mask),
-                2 => _mm_bsrli_si128::<2>(mask),
-                3 => _mm_bsrli_si128::<3>(mask),
-                4 => _mm_bsrli_si128::<4>(mask),
-                5 => _mm_bsrli_si128::<5>(mask),
-                6 => _mm_bsrli_si128::<6>(mask),
-                7 => _mm_bsrli_si128::<7>(mask),
-                8 => _mm_bsrli_si128::<8>(mask),
-                9 => _mm_bsrli_si128::<9>(mask),
-                10 => _mm_bsrli_si128::<10>(mask),
-                11 => _mm_bsrli_si128::<11>(mask),
-                12 => _mm_bsrli_si128::<12>(mask),
-                13 => _mm_bsrli_si128::<13>(mask),
-                14 => _mm_bsrli_si128::<14>(mask),
-                15 => _mm_bsrli_si128::<15>(mask),
-                _ => unreachable!(),
+    macro_rules! devolve {
+        ($n:literal) => {
+            unsafe {
+                let shifted = _mm_bsrli_si128::<{ 16 - $n }>(mask);
+                Ok(_mm_and_si128(shifted, v))
             }
         };
+    }
 
-        let masked = unsafe { _mm_and_si128(shifted, v) };
-
-        Ok(masked)
+    match s.len() {
+        1 => devolve!(1),
+        2 => devolve!(2),
+        3 => devolve!(3),
+        4 => devolve!(4),
+        5 => devolve!(5),
+        6 => devolve!(6),
+        7 => devolve!(7),
+        8 => devolve!(8),
+        9 => devolve!(9),
+        10 => devolve!(10),
+        11 => devolve!(11),
+        12 => devolve!(12),
+        13 => devolve!(13),
+        14 => devolve!(14),
+        15 => devolve!(15),
+        _ => Err(Ipv4ParseError::WrongLength),
     }
 }
 

@@ -6,6 +6,6 @@ pub use crate::raw::sse2::parse_ipv4;
 
 #[derive(Debug)]
 pub enum Ipv4ParseError {
-    TooLong,
+    WrongLength,
     Invalid,
 }
