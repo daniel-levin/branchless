@@ -157,9 +157,8 @@ static PATTERNS: [[u8; 16]; 81] = [
 /// http://0x80.pl/notesen/2023-04-09-faster-parse-ipv4.html
 /// https://lemire.me/blog/2023/06/08/parsing-ip-addresses-crazily-fast/
 pub fn parse_ipv4(s: &str) -> Result<u32, ()> {
+    let mut v: m128 = safe_masked_load(s);
     unsafe {
-        let mut v: m128 = safe_masked_load(s);
-
         let all_dots: m128 = _mm_set1_epi8(0x2E);
         let dot_locations: m128 = _mm_cmpeq_epi8(v, all_dots);
         let dot_mask: i32 = _mm_movemask_epi8(dot_locations);
@@ -221,7 +220,7 @@ fn safe_masked_load(s: &str) -> m128 {
                 13 => _mm_bsrli_si128::<13>(mask),
                 14 => _mm_bsrli_si128::<14>(mask),
                 15 => _mm_bsrli_si128::<15>(mask),
-                x => unreachable!(),
+                _ => unreachable!(),
             }
         };
 
