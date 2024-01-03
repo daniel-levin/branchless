@@ -204,7 +204,7 @@ fn masked_load_or_die(s: &str) -> Result<m128, Ipv4ParseError> {
     if s.len() >= 16 {
         Ok(v)
     } else {
-        let mask = safe_arch::m128i::from((u128::MAX >> 8 * (16 - s.len())) as i128).0;
+        let mask = safe_arch::m128i::from((u128::MAX >> (8 * (16 - s.len()))) as i128).0;
         let masked = unsafe { _mm_and_si128(mask, v) };
 
         Ok(masked)

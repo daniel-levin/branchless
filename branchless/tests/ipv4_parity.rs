@@ -1,6 +1,6 @@
 use std::str::FromStr;
 
-static TEST_DATA: [&'static str; 10_000] = include!("../testdata/random");
+static TEST_DATA: [&str; 10_000] = include!("../testdata/random");
 
 #[test]
 fn test_parity_parse_ipv4() {

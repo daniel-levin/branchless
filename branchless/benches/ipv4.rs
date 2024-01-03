@@ -6,7 +6,7 @@ use std::str::FromStr;
 
 use test::Bencher;
 
-static TEST_DATA: [&'static str; 10_000] = include!("../testdata/random");
+static TEST_DATA: [&str; 10_000] = include!("../testdata/random");
 
 #[bench]
 fn bench_parse_inet4_single(bencher: &mut Bencher) {
