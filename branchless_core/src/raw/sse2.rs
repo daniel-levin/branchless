@@ -222,6 +222,7 @@ fn are_equal(a: m128, b: m128) -> bool {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::ip::Ipv4ParseError;
 
     #[test]
     pub fn test_masked_load_masks() {
@@ -241,5 +242,14 @@ mod tests {
         let ne = u32::to_ne_bytes(localhost);
 
         assert_eq!(ne, localhost_known.octets());
+    }
+
+    #[test]
+    fn wrong_lengths() {
+        let bads = ["127.0", "127.0.0.0.0.0.0.0.0.0.0.0.0.0.0"];
+
+        for bad in bads {
+            assert_eq!(Ipv4ParseError::WrongLength, parse_ipv4(bad).unwrap_err());
+        }
     }
 }
