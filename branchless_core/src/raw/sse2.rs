@@ -2,7 +2,7 @@
 #![cfg(target_feature = "sse2")]
 
 use core::arch::x86_64::{
-    __m128i, _mm_adds_epu16, _mm_adds_epu8, _mm_cmpeq_epi8, _mm_cvtsi128_si32, _mm_loadu_si128,
+    __m128i, _mm_adds_epu16, _mm_adds_epu8, _mm_cvtsi128_si32, _mm_loadu_si128,
     _mm_maddubs_epi16, _mm_movemask_epi8, _mm_packus_epi16, _mm_set1_epi8, _mm_set_epi8,
     _mm_shuffle_epi32, _mm_shuffle_epi8, _mm_subs_epi8, _mm_xor_si128,
 };
@@ -189,9 +189,9 @@ pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
         return Err(Ipv4ParseError::Invalid);
     }
 
+    let shuf = m128i::from(PATTERNS[hash_id as usize]).0;
+
     unsafe {
-        let pattern_ptr = PATTERNS[hash_id as usize].as_ptr() as *const __m128i;
-        let shuf = _mm_loadu_si128(pattern_ptr);
         v = _mm_shuffle_epi8(v, shuf);
 
         let mul_weights = _mm_set_epi8(0, 100, 0, 100, 0, 100, 0, 100, 10, 1, 10, 1, 10, 1, 10, 1);
