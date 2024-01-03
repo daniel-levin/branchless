@@ -7,7 +7,9 @@ use core::arch::x86_64::{
     _mm_shuffle_epi32, _mm_shuffle_epi8, _mm_subs_epi8, _mm_xor_si128,
 };
 
-use safe_arch::{bitand_m128i, m128i, set_splat_i8_m128i};
+use safe_arch::{
+    bitand_m128i, cmp_eq_mask_i8_m128i, m128i, move_mask_i8_m128i, set_splat_i8_m128i,
+};
 
 use crate::ip::Ipv4ParseError;
 
@@ -164,26 +166,30 @@ pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
     let mut v = masked_load_or_die(s)?.0;
     let all_dots = set_splat_i8_m128i(0x2E);
     let saturation_distance = set_splat_i8_m128i(0x76);
-    unsafe {
-        let dot_locations: __m128i = _mm_cmpeq_epi8(v, all_dots.0);
-        let dot_mask: i32 = _mm_movemask_epi8(dot_locations);
+    let dot_locations = cmp_eq_mask_i8_m128i(m128i(v), all_dots);
+    let dot_mask: i32 = move_mask_i8_m128i(dot_locations);
 
+    let non_digit_mask = unsafe {
         v = _mm_xor_si128(v, _mm_set1_epi8(0x30));
         v = _mm_adds_epu8(v, saturation_distance.0);
-        let non_digit_mask = _mm_movemask_epi8(v);
+        let ndm = _mm_movemask_epi8(v);
         v = _mm_subs_epi8(v, saturation_distance.0);
 
-        let bad_mask = dot_mask ^ non_digit_mask;
-        let clip_mask: i32 = bad_mask ^ (bad_mask - 1);
-        let partition_mask = non_digit_mask & clip_mask;
+        ndm
+    };
 
-        let hash_key = (((partition_mask as u64) * 0x00CF7800) >> 24) as u8;
+    let bad_mask = dot_mask ^ non_digit_mask;
+    let clip_mask: i32 = bad_mask ^ (bad_mask - 1);
+    let partition_mask = non_digit_mask & clip_mask;
 
-        let hash_id = PATTERNS_ID[hash_key as usize];
-        if hash_id >= 81 {
-            return Err(Ipv4ParseError::Invalid);
-        }
+    let hash_key = (((partition_mask as u64) * 0x00CF7800) >> 24) as u8;
 
+    let hash_id = PATTERNS_ID[hash_key as usize];
+    if hash_id >= 81 {
+        return Err(Ipv4ParseError::Invalid);
+    }
+
+    unsafe {
         let pattern_ptr = PATTERNS[hash_id as usize].as_ptr() as *const __m128i;
         let shuf = _mm_loadu_si128(pattern_ptr);
         v = _mm_shuffle_epi8(v, shuf);
