@@ -201,8 +201,8 @@ pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
 fn masked_load_or_die(s: &str) -> Result<m128, Ipv4ParseError> {
     let v: m128 = unsafe { _mm_loadu_si128(s.as_ptr() as *const m128) };
 
-    if s.len() >= 16 {
-        Ok(v)
+    if s.len() > 15 || s.len() < 7 {
+        Err(Ipv4ParseError::WrongLength)
     } else {
         let mask = safe_arch::m128i::from((u128::MAX >> (8 * (16 - s.len()))) as i128).0;
         let masked = unsafe { _mm_and_si128(mask, v) };
@@ -225,11 +225,11 @@ mod tests {
 
     #[test]
     pub fn test_masked_load_masks() {
-        let a = "hello world";
-        let b = "hello attacker";
+        let a = "hello there world";
+        let b = "hello there attacker";
 
-        let a_masked = masked_load_or_die(&a[0..=4]).unwrap();
-        let b_masked = masked_load_or_die(&b[0..=4]).unwrap();
+        let a_masked = masked_load_or_die(&a[0..=9]).unwrap();
+        let b_masked = masked_load_or_die(&b[0..=9]).unwrap();
 
         assert!(are_equal(a_masked, b_masked));
     }
