@@ -2,7 +2,7 @@
 #![cfg(target_feature = "sse2")]
 
 use core::arch::x86_64::{
-    __m128i as m128, _mm_adds_epu16, _mm_adds_epu8, _mm_and_si128, _mm_bsrli_si128, _mm_cmpeq_epi8,
+    __m128i as m128, _mm_adds_epu16, _mm_adds_epu8, _mm_and_si128, _mm_cmpeq_epi8,
     _mm_cvtsi128_si32, _mm_loadu_si128, _mm_maddubs_epi16, _mm_movemask_epi8, _mm_packus_epi16,
     _mm_set1_epi8, _mm_set_epi8, _mm_shuffle_epi32, _mm_shuffle_epi8, _mm_subs_epi8,
     _mm_test_all_ones, _mm_xor_si128,
@@ -160,8 +160,7 @@ const PATTERNS: [[u8; 16]; 81] = [
 /// http://0x80.pl/notesen/2023-04-09-faster-parse-ipv4.html
 /// https://lemire.me/blog/2023/06/08/parsing-ip-addresses-crazily-fast/
 pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
-    //let mut v: m128 = masked_load_or_die(s)?;
-    let mut v: m128 = unsafe { _mm_loadu_si128(s.as_ptr() as *const m128) };
+    let mut v: m128 = masked_load_or_die(s)?;
     unsafe {
         let all_dots: m128 = _mm_set1_epi8(0x2E);
         let dot_locations: m128 = _mm_cmpeq_epi8(v, all_dots);
@@ -201,34 +200,14 @@ pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
 
 fn masked_load_or_die(s: &str) -> Result<m128, Ipv4ParseError> {
     let v: m128 = unsafe { _mm_loadu_si128(s.as_ptr() as *const m128) };
-    let mask = unsafe { _mm_set1_epi8(-1i8) };
 
-    macro_rules! devolve {
-        ($n:literal) => {
-            unsafe {
-                let shifted = _mm_bsrli_si128::<{ 16 - $n }>(mask);
-                Ok(_mm_and_si128(shifted, v))
-            }
-        };
-    }
+    if s.len() >= 16 {
+        Ok(v)
+    } else {
+        let mask = safe_arch::m128i::from((u128::MAX >> 8 * (16 - s.len())) as i128).0;
+        let masked = unsafe { _mm_and_si128(mask, v) };
 
-    match s.len() {
-        1 => devolve!(1),
-        2 => devolve!(2),
-        3 => devolve!(3),
-        4 => devolve!(4),
-        5 => devolve!(5),
-        6 => devolve!(6),
-        7 => devolve!(7),
-        8 => devolve!(8),
-        9 => devolve!(9),
-        10 => devolve!(10),
-        11 => devolve!(11),
-        12 => devolve!(12),
-        13 => devolve!(13),
-        14 => devolve!(14),
-        15 => devolve!(15),
-        _ => Err(Ipv4ParseError::WrongLength),
+        Ok(masked)
     }
 }
 
