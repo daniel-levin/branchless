@@ -2,11 +2,12 @@
 #![cfg(target_feature = "sse2")]
 
 use core::arch::x86_64::{
-    __m128i as m128, _mm_adds_epu16, _mm_adds_epu8, _mm_and_si128, _mm_cmpeq_epi8,
-    _mm_cvtsi128_si32, _mm_loadu_si128, _mm_maddubs_epi16, _mm_movemask_epi8, _mm_packus_epi16,
-    _mm_set1_epi8, _mm_set_epi8, _mm_shuffle_epi32, _mm_shuffle_epi8, _mm_subs_epi8,
-    _mm_test_all_ones, _mm_xor_si128,
+    __m128i, _mm_adds_epu16, _mm_adds_epu8, _mm_cmpeq_epi8, _mm_cvtsi128_si32, _mm_loadu_si128,
+    _mm_maddubs_epi16, _mm_movemask_epi8, _mm_packus_epi16, _mm_set1_epi8, _mm_set_epi8,
+    _mm_shuffle_epi32, _mm_shuffle_epi8, _mm_subs_epi8, _mm_xor_si128,
 };
+
+use safe_arch::{bitand_m128i, m128i, set_splat_i8_m128i};
 
 use crate::ip::Ipv4ParseError;
 
@@ -160,17 +161,17 @@ const PATTERNS: [[u8; 16]; 81] = [
 /// http://0x80.pl/notesen/2023-04-09-faster-parse-ipv4.html
 /// https://lemire.me/blog/2023/06/08/parsing-ip-addresses-crazily-fast/
 pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
-    let mut v: m128 = masked_load_or_die(s)?;
+    let mut v = masked_load_or_die(s)?.0;
+    let all_dots = set_splat_i8_m128i(0x2E);
+    let saturation_distance = set_splat_i8_m128i(0x76);
     unsafe {
-        let all_dots: m128 = _mm_set1_epi8(0x2E);
-        let dot_locations: m128 = _mm_cmpeq_epi8(v, all_dots);
+        let dot_locations: __m128i = _mm_cmpeq_epi8(v, all_dots.0);
         let dot_mask: i32 = _mm_movemask_epi8(dot_locations);
 
-        let saturation_distance = _mm_set1_epi8(0x76);
         v = _mm_xor_si128(v, _mm_set1_epi8(0x30));
-        v = _mm_adds_epu8(v, saturation_distance);
+        v = _mm_adds_epu8(v, saturation_distance.0);
         let non_digit_mask = _mm_movemask_epi8(v);
-        v = _mm_subs_epi8(v, saturation_distance);
+        v = _mm_subs_epi8(v, saturation_distance.0);
 
         let bad_mask = dot_mask ^ non_digit_mask;
         let clip_mask: i32 = bad_mask ^ (bad_mask - 1);
@@ -183,7 +184,7 @@ pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
             return Err(Ipv4ParseError::Invalid);
         }
 
-        let pattern_ptr = PATTERNS[hash_id as usize].as_ptr() as *const m128;
+        let pattern_ptr = PATTERNS[hash_id as usize].as_ptr() as *const __m128i;
         let shuf = _mm_loadu_si128(pattern_ptr);
         v = _mm_shuffle_epi8(v, shuf);
 
@@ -198,24 +199,16 @@ pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
     }
 }
 
-fn masked_load_or_die(s: &str) -> Result<m128, Ipv4ParseError> {
-    let v: m128 = unsafe { _mm_loadu_si128(s.as_ptr() as *const m128) };
+#[inline(always)]
+fn masked_load_or_die(s: &str) -> Result<m128i, Ipv4ParseError> {
+    let v: m128i = m128i(unsafe { _mm_loadu_si128(s.as_ptr() as *const __m128i) });
 
     if s.len() > 15 || s.len() < 7 {
         Err(Ipv4ParseError::WrongLength)
     } else {
-        let mask = safe_arch::m128i::from((u128::MAX >> (8 * (16 - s.len()))) as i128).0;
-        let masked = unsafe { _mm_and_si128(mask, v) };
+        let mask = safe_arch::m128i::from(u128::MAX >> (8 * (16 - s.len())));
 
-        Ok(masked)
-    }
-}
-
-#[allow(dead_code)]
-fn are_equal(a: m128, b: m128) -> bool {
-    unsafe {
-        let compared = _mm_cmpeq_epi8(a, b);
-        _mm_test_all_ones(compared) == 1
+        Ok(bitand_m128i(mask, v))
     }
 }
 
@@ -232,7 +225,7 @@ mod tests {
         let a_masked = masked_load_or_die(&a[0..=9]).unwrap();
         let b_masked = masked_load_or_die(&b[0..=9]).unwrap();
 
-        assert!(are_equal(a_masked, b_masked));
+        assert_eq!(a_masked, b_masked);
     }
 
     #[test]
@@ -246,10 +239,19 @@ mod tests {
 
     #[test]
     fn wrong_lengths() {
-        let bads = ["127.0", "127.0.0.0.0.0.0.0.0.0.0.0.0.0.0"];
+        let bads = ["127.0", "127.0.0.0.0.0.0.0.0.0.0.0.0.0.0", "", "abc"];
 
         for bad in bads {
             assert_eq!(Ipv4ParseError::WrongLength, parse_ipv4(bad).unwrap_err());
+        }
+    }
+
+    #[test]
+    fn invalid() {
+        let bads = ["127.0.01"];
+
+        for bad in bads {
+            assert_eq!(Ipv4ParseError::Invalid, parse_ipv4(bad).unwrap_err());
         }
     }
 }
