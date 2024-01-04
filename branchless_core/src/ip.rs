@@ -4,6 +4,7 @@
 #[cfg(target_feature = "sse2")]
 pub use crate::raw::sse2::parse_ipv4;
 
+/// Coarse-grained error for [parse_ipv4].
 #[derive(Debug, PartialEq, Eq)]
 pub enum Ipv4ParseError {
     WrongLength,
