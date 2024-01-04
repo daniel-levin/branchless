@@ -2,9 +2,9 @@
 #![cfg(target_feature = "sse2")]
 
 use core::arch::x86_64::{
-    __m128i, _mm_adds_epu16, _mm_adds_epu8, _mm_cvtsi128_si32, _mm_loadu_si128,
-    _mm_maddubs_epi16, _mm_movemask_epi8, _mm_packus_epi16, _mm_set1_epi8, _mm_set_epi8,
-    _mm_shuffle_epi32, _mm_shuffle_epi8, _mm_subs_epi8, _mm_xor_si128,
+    __m128i, _mm_adds_epu16, _mm_adds_epu8, _mm_cvtsi128_si32, _mm_loadu_si128, _mm_maddubs_epi16,
+    _mm_movemask_epi8, _mm_packus_epi16, _mm_set1_epi8, _mm_set_epi8, _mm_shuffle_epi32,
+    _mm_shuffle_epi8, _mm_subs_epi8, _mm_xor_si128,
 };
 
 use safe_arch::{
@@ -182,7 +182,7 @@ pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
     let clip_mask: i32 = bad_mask ^ (bad_mask - 1);
     let partition_mask = non_digit_mask & clip_mask;
 
-    let hash_key = (((partition_mask as u64) * 0x00CF7800) >> 24) as u8;
+    let hash_key = (((partition_mask as u64) * 0x00_CF_78_00) >> 24) as u8;
 
     let hash_id = PATTERNS_ID[hash_key as usize];
     if hash_id >= 81 {
@@ -209,7 +209,7 @@ pub fn parse_ipv4(s: &str) -> Result<u32, Ipv4ParseError> {
 fn masked_load_or_die(s: &str) -> Result<m128i, Ipv4ParseError> {
     let v: m128i = m128i(unsafe { _mm_loadu_si128(s.as_ptr() as *const __m128i) });
 
-    if s.len() > 15 || s.len() < 7 {
+    if s.len() < 7 || 15 < s.len() {
         Err(Ipv4ParseError::WrongLength)
     } else {
         let mask = safe_arch::m128i::from(u128::MAX >> (8 * (16 - s.len())));
