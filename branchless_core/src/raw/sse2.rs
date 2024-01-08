@@ -255,6 +255,17 @@ mod tests {
     }
 
     #[test]
+    fn test_masking_works() {
+        let full = "192.168.0.123";
+        let not_truncated = parse_ipv4(full);
+        let truncated = parse_ipv4(&full[0..full.len() - 1]);
+        let truncated_more = parse_ipv4(&full[0..full.len() - 2]);
+
+        assert_ne!(truncated, not_truncated);
+        assert_ne!(truncated_more, truncated);
+    }
+
+    #[test]
     fn invalid() {
         let bads = ["127.0.01"];
 
